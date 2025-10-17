@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("NEON_POSTGRES_PRISMA_URL")
+}
+
+model Player {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tournaments TournamentPlayer[]
+  team1Matches Match[] @relation("Team1Player1")
+  team2Matches Match[] @relation("Team2Player1")
+  leaderboardEntries Leaderboard[]
+
+  @@map("players")
+}
+
+model Tournament {
+  id          String   @id @default(cuid())
+  name        String
+  matchLength Int      @default(16) // 8, 16, or 32 points
+  status      String   @default("active") // active, completed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  players  TournamentPlayer[]
+  matches  Match[]
+  leaderboard Leaderboard[]
+
+  @@map("tournaments")
+}
+
+model TournamentPlayer {
+  id           String @id @default(cuid())
+  tournamentId String
+  playerId     String
+
+  // Relations
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  player     Player     @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, playerId])
+  @@map("tournament_players")
+}
+
+model Match {
+  id           String   @id @default(cuid())
+  tournamentId String
+  matchNumber  Int
+  
+  // Team 1
+  team1Player1Id String
+  team1Player2Id String
+  team1Score     Int      @default(0)
+  
+  // Team 2
+  team2Player1Id String
+  team2Player2Id String
+  team2Score     Int      @default(0)
+  
+  status       String   @default("pending") // pending, completed
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  tournament     Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  team1Player1   Player     @relation("Team1Player1", fields: [team1Player1Id], references: [id])
+  team1Player2   Player     @relation("Team1Player1", fields: [team1Player2Id], references: [id])
+  team2Player1   Player     @relation("Team2Player1", fields: [team2Player1Id], references: [id])
+  team2Player2   Player     @relation("Team2Player1", fields: [team2Player2Id], references: [id])
+
+  @@map("matches")
+}
+
+model Leaderboard {
+  id           String @id @default(cuid())
+  tournamentId String?
+  playerId     String
+  wins         Int    @default(0)
+  losses       Int    @default(0)
+  pointsFor    Int    @default(0)
+  pointsAgainst Int   @default(0)
+
+  // Relations
+  tournament Tournament? @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  player     Player      @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, playerId])
+  @@map("leaderboard")
+}
